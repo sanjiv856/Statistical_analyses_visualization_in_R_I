@@ -1,1 +1,1 @@
-# Statistical analyses visualisation in R I
+# Statistical analysis visualisation in R I
