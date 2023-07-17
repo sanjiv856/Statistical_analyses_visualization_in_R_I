@@ -1,0 +1,399 @@
+---
+title: "Part 3 Assignment 1"
+author: "Sanjiv Kumar"
+date: "10/14/2021"
+output:
+  pdf_document: default
+  word_document:
+    fig_height: 7
+    fig_width: 7
+editor_options:
+  chunk_output_type: console
+---
+
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+library(Rcmdr) #this chunk start RCommander 
+library(ggplot2) #this cunks starts ggplot2
+library(memisc) # for mtable 
+library(dplyr) # for %>%
+library(pracma) # for mode
+library(kableExtra) # for tables
+#if you have used other packeges you may need to include them here
+```
+
+
+# Part 1. Correlation between GDP and access to personal computers in the year of 2005
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#include a chunk that opens your indata
+
+gdp_pc <- 
+  read.table("GDP_Computer1.txt",
+   header=TRUE, stringsAsFactors=TRUE, sep="\t", na.strings="NA", dec=".", 
+  strip.white=TRUE)
+
+```
+
+## Question 1
+
+## Introduction
+
+We are analyzing the relationship between GDP per capita and access to the personal computers per 100 measured in 2005 (data # Ref 1). The data set from two data (from GDP_per_capita_2005.xlxs, Personalcomputer_2005.xlxs) were combined in the form of `gdp_pc` (data import). Data for the countries missing either of the data, i.e. GDP per capita or access to personal computer were removed from the dataset for this analysis. 
+
+## Method
+
+Initially, we see the general summary statistics using `summary(gdp_pc)` as shown in result section. Then we calculate the mean, median and standard deviation (sd) for both the columns in the dataset (i.e. `gdp_pc`) and we report Report the Mean, SD and Median.
+
+## Result
+
+The mean GDPperCPITA is `r mean(gdp_pc$GDPperCAPITA)` and mean PC_per_100 is `r mean(gdp_pc$PC_per_100)`. The median GDPperCPITA and PC_per_100 is `r median(gdp_pc$GDPperCAPITA)` and `r median(gdp_pc$PC_per_100)` respectively. The standard deviation for GDPperCPITA and PC_per_100 is `r sd(gdp_pc$GDPperCAPITA)` and `r sd(gdp_pc$PC_per_100)`, respectively. 
+
+```{r}
+summary(gdp_pc)
+
+sd(gdp_pc$GDPperCAPITA)
+sd(gdp_pc$PC_per_100)
+```
+
+### Histogram 
+
+From the histogram below, both the GDPperCAPITA and PC_per_100 does not appear to be normally distributed. Since the data was collected over same countries, and to see the relationship between the  continuous variables GDPperCAPITA and PC_per_100 across the data set, we need to perform correlation analysis. To check the relationship between GDPperCAPITA and PC_per_100, scatter plot was made which shows linear correlation between the chosen data. In this case, Pearson product-moment correlation was used for the analysis, as Spearman Rank-Order correlation is for the non-parametric analysis, requiring at least one ordinal variable. 
+
+```{r fig1, fig.cap = "Histogram of GDPperCAPITA"}
+with(gdp_pc, hist(GDPperCAPITA, scale="frequency", breaks="Sturges", 
+                  col="darkgray", xlab = "GDP Per Capita", ylab = "Frequency"))
+```
+
+```{r fig2, fig.cap = "Histogram of PC per 100"}
+with(gdp_pc, hist(PC_per_100, scale="frequency", breaks="Sturges", 
+                  col="darkgray", xlab = "PC Per 100", ylab = "Frequency"))
+```
+
+### Analysis
+
+Pearson product-moment correlation: 
+
+* Correlation coefficient: 0.7882171 
+* df: 153
+* p-value: < 2.2e-16
+* name of test: Pearson's product-moment correlation
+
+```{r}
+with(gdp_pc, cor.test(GDPperCAPITA, PC_per_100, alternative="two.sided", 
+  method="pearson"))
+```
+
+### Scatterplot
+
+```{r fig3, fig.cap = "Scatterplot of GDPperCAPITA vs PC_per_100"}
+scatterplot(PC_per_100~GDPperCAPITA, regLine=FALSE, smooth=FALSE, 
+            boxplots=FALSE, data=gdp_pc, xlab = "GDP Per Capita", 
+            ylab = "PC Per 1000")
+```
+
+## Discussion
+
+The data shows significant high linear correlation between the GDP Per Capita and PC per 1000. 
+However, from the dataset, the data points are not uniformly distributed but are concentrated near x, y intercept (as apparent from scatterplot). Also shapiro.test, shows p < 0.005 (and therefore, hypothesis of normally distributed is rejected) for both GDPperCAPITA and PC_per_100. Therefor, for this data we may also choose Spearman Rank-Order correlation, which also shows similar trend and conclusion. In this case:
+
+* Correlation rho: 0.8547637 
+* p-value: < 2.2e-16
+* name of test: Spearman's rank correlation rho
+
+Both the correlation methods give positive correlation between GDPperCAPITA and PC_per_100. 
+
+```{r}
+shapiro.test(gdp_pc$GDPperCAPITA)
+shapiro.test(gdp_pc$PC_per_100)
+
+with(gdp_pc, cor.test(GDPperCAPITA, PC_per_100, alternative="two.sided", 
+  method="spearman", exact=FALSE))
+```
+
+## References
+
+<!-- Include references if appropriate ex. homepages that you fetch data from, articles from scientific journals, etc. --> 
+
+1. GDP_per_capita_2005.xlxs, Personalcomputer_2005.xlxs from Gapminder (https://www.gapminder.org/data/). 
+
+# Part 2. Regression analysis
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#include a chunk that opens your indata
+
+chinaElectricity <- 
+  read.table("ChinaElectricity1990-2005.txt",
+   header=TRUE, stringsAsFactors=TRUE, sep="\t", na.strings="NA", dec=".", 
+  strip.white=TRUE)
+
+```
+
+## Question 2 Has the electricity generation per capita in China increased from 1990 to 2005?
+
+## Introduction
+
+Here we analyse a linear regression model to study the electricity generation per capita from 1990 to 2005 (data # Ref 1). 
+
+## Method
+
+Here we make three different regression models i.e. normal data, log10 transformed and square root transformed data to make these models. 
+
+## Result
+
+Three different regression models were made as follows. 
+
+```{r}
+Reg.Model.1 <- lm(China~Year, data=chinaElectricity)
+summary(Reg.Model.1)
+#plot(Reg.Model.1)
+```
+
+* r-squared: `r summary(Reg.Model.1)$adj.r.squared`
+* b (regression coefficient): `r Reg.Model.1$coefficients[1]`
+* SEb: `r summary(Reg.Model.1)$coefficients[2, 2]`
+* t: `r summary(Reg.Model.1)$coefficients[2, 3]`
+* df: `r summary(Reg.Model.1)$df`
+* p: `r summary(Reg.Model.1)$coefficients[2, 4]`
+
+## Histogram 
+
+Distribution of electricity production looks like normal distribution, skewed towards left. 
+
+```{r}
+summary(chinaElectricity$China)
+hist(chinaElectricity$China, 
+     xlab = "Electricity generation per capita (kilowatt-hours)", 
+     ylab = "Frequency")
+plot(chinaElectricity$Year, chinaElectricity$China, xlab = "Year", 
+     ylab = "Electricity generation per capita (kilowatt-hours)")
+```
+
+## Scatterplot
+
+```{r}
+scatterplot(chinaElectricity$China~chinaElectricity$Year, regLine=FALSE, 
+            smooth=FALSE, boxplots=FALSE, xlab = "Year", 
+            ylab = "Electricity generation per capita (kilowatt-hours)")
+abline(Reg.Model.1)
+```
+
+Does the relationship look linear? Yes, there is linear increase in the electricity generation per capita from 1990 to 2005 in China. 
+
+## log10 transformation
+
+```{r}
+Reg.Model.2 <-lm(log10(China)~Year, data=chinaElectricity)
+summary(Reg.Model.2)
+scatterplot(chinaElectricity$Year, log10(chinaElectricity$China), regLine=FALSE, 
+            smooth=FALSE, boxplots=FALSE, xlab = "Year", 
+            ylab = "Electricity generation per capita (kilowatt-hours)")
+abline(Reg.Model.2)
+#plot(Reg.Model.2)
+```
+
+* r-squared: `r summary(Reg.Model.2)$adj.r.squared`
+* b (regression coefficient): `r Reg.Model.2$coefficients[1]`
+* SEb: `r summary(Reg.Model.2)$coefficients[2, 2]`
+* t: `r summary(Reg.Model.2)$coefficients[2, 3]`
+* df: `r summary(Reg.Model.2)$df`
+* p: `r summary(Reg.Model.2)$coefficients[2, 4]`
+
+## Square root transformation
+
+```{r}
+Reg.Model.3 <-lm(sqrt(China)~Year, data=chinaElectricity)
+summary(Reg.Model.3)
+scatterplot(chinaElectricity$Year, sqrt(chinaElectricity$China), regLine=FALSE, 
+            smooth=FALSE, boxplots=FALSE, xlab = "Year", 
+            ylab = "Electricity generation per capita (kilowatt-hours)")
+abline(Reg.Model.3)
+#plot(Reg.Model.3)
+```
+
+* r-squared: `r summary(Reg.Model.3)$adj.r.squared`
+* b (regression coefficient): `r Reg.Model.3$coefficients[1]`
+* SEb: `r summary(Reg.Model.3)$coefficients[2, 2]`
+* t: `r summary(Reg.Model.3)$coefficients[2, 3]`
+* df: `r summary(Reg.Model.3)$df`
+* p: `r summary(Reg.Model.3)$coefficients[2, 4]`
+
+## Comparision of different models
+
+* r-squared(linear): `r summary(Reg.Model.1)$adj.r.squared`
+* r-squared(log10): `r summary(Reg.Model.2)$adj.r.squared`
+* r-squared (sqrt): `r summary(Reg.Model.3)$adj.r.squared`
+
+From above value, the r-squared(log10) is the highest (i.e. `r summary(Reg.Model.2)$adj.r.squared`) and therefore this regression model explains the data optimally. Also see below (mtable):
+
+```{r}
+mtable(Reg.Model.1, Reg.Model.2, Reg.Model.3) # Ref 2
+```
+
+## References
+
+<!-- Include references if appropriate ex. homepages that you fetch data from, articles from scientific journals, etc. --> 
+
+1. Electricity Generation per capita.xlxs from Gapminder (https://www.gapminder.org/data/). 
+2. mtable from https://bookdown.org/josiesmith/labbook/bivariate-linear-regression.html
+
+
+# Part 3. Testing differences between groups
+
+## Question 3 Is there a difference in income between the New York districts, Manhattan and Brooklyn?
+
+## Introduction
+
+Here we analyse the data from Lander (2019) (Ref 1) to study the difference in the income between two districts in New York i.e. Manhattan and Brooklyn.
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#include a chunk that opens your indata
+
+LanderHousingNew <- read.table("LanderHousingNew.txt", header=TRUE, 
+                               stringsAsFactors=TRUE, sep="\t", na.strings="NA", 
+                               dec=".", strip.white=TRUE)
+```
+
+## Histogram 
+
+## Histogram by cities
+
+Brooklyn
+
+```{r}
+hist(subset(LanderHousingNew, Boro == "Brooklyn")$Income,
+  main = "Brooklyn Income Distribution", 
+  xlab = "Income")
+```
+
+Manhattan
+
+```{r}
+hist(subset(LanderHousingNew, Boro == "Manhattan")$Income,
+  main = "Manhattan Income Distribution", 
+  xlab = "Income")
+```
+
+Which test is most appropriate to use?
+The LanderHousingNew Income data is not normally distributed data, it is left skewed and therefore, non-parametric test Wilcoxon’s rank-sum test would be used in this case. 
+
+This is also supprted by shapiro.test.
+
+For Brooklyn
+```{r}
+shapiro.test(subset(LanderHousingNew, Boro == "Brooklyn")$Income)
+```
+
+For Manhattan
+```{r}
+shapiro.test(subset(LanderHousingNew, Boro == "Manhattan")$Income)
+```
+
+Summary of the data
+```{r}
+summary(LanderHousingNew)
+```
+
+## Wilcoxon rank-sum test
+
+```{r}
+wilcox.test(LanderHousingNew$Income~LanderHousingNew$Boro)
+```
+
+Since, the p-value `r wilcox.test(LanderHousingNew$Income~LanderHousingNew$Boro)$p.value` is less then than the significance level 0.05, it is therefore concluded that the difference in the Income between the two group i.e. Brooklyn and Manhattan is significant. W = 223.
+
+## Distribution by cities
+
+Graph representing differences among the districts. 
+
+```{r}
+ggplot(LanderHousingNew) +
+  aes(x = Boro, y = Income) +
+  geom_boxplot(fill = "grey") +
+  theme_minimal()
+```
+
+Above plot shows that income at Manhattan is higher than the income at Brooklyn. 
+
+What are the measured central tendencies for income in the two districts?
+
+```{r}
+LanderHousingNew %>%
+  group_by(Boro) %>%
+  summarise("n" = length(Income), "Mean" = mean(Income), "Median" = median(Income), 
+            "Mode" = Mode(Income), "SD" = sd(Income)) %>% 
+  kbl(caption = "Measured central tendencies for income in the two districts") %>%
+  kable_minimal()
+```
+
+## References
+
+1. Lander (2019) (https://www.jaredlander.com/datasets/)
+
+# Question 4 Are there differences in house pricing (SEK/m2) in Sweden between 2016 and 2017?
+
+## Introduction
+
+Here we analyse the data from  “Svensk mäklarstatistik” (Ref 1) to study the difference in housing pricing in Sweden between 2016 and 2017.
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#include a chunk that opens your indata
+
+Housepricing_sweden <- read.table("Housepricing_sweden.txt", header=TRUE, 
+                               stringsAsFactors=TRUE, sep="\t", na.strings="NA", 
+                               dec=".", strip.white=TRUE)
+```
+
+## Methods and Results 
+
+## Histogram 
+
+## Histogram by year
+
+Year 2016: The data is normally distributed as apparent from the histogram below. 
+
+```{r}
+ggplot(Housepricing_sweden, aes(x=X2016_sek_sqrm)) + 
+  geom_histogram(binwidth = 50) +
+  labs(title="Housing Price Distribution 2016", x="Income", y="Frequency")
+```
+
+Year 2017: The data is not-normally distributed (skewed). 
+
+```{r}
+ggplot(Housepricing_sweden, aes(x=X2017_sek_sqrm)) + 
+  geom_histogram(binwidth = 50) +
+  labs(title="Housing Price Distribution 2017", x="Income", y="Frequency")
+
+```
+
+On an average, the there is increase in minimum, mean and maximum house pricing in 2017 as compare to 2016. 
+```{r}
+summary(Housepricing_sweden)
+
+sd(Housepricing_sweden$X2016_sek_sqrm)
+sd(Housepricing_sweden$X2017_sek_sqrm)
+
+shapiro.test(Housepricing_sweden$X2016_sek_sqrm)
+shapiro.test(Housepricing_sweden$X2017_sek_sqrm)
+```
+
+The two data set from 2016 and 2017 are not identical with (V = 6, p-value 0.006836)
+```{r}
+wilcox.test(Housepricing_sweden$X2016_sek_sqrm, Housepricing_sweden$X2017_sek_sqrm, 
+            paired=TRUE)
+```
+
+Paired samples test
+```{r}
+t.test(Housepricing_sweden$X2017_sek_sqrm, Housepricing_sweden$X2016_sek_sqrm, 
+       paired = TRUE, alternative = "two.sided")
+```
+
+## Discussion
+
+The p-value (0.002885) of the test is less than the p-value (0.05). Therefore, we can reject the null hypothesis. There is a significant increase in the housing prices between 2016 and 2017 in Sweden (t = 3.8116, df = 11, p-value = 0.002885).
+
+## References
+
+1. “Svensk mäklarstatistik” https://www.maklarstatistik.se/

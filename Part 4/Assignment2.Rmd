@@ -1,0 +1,296 @@
+---
+title: "Assignment 2"
+author: "Sanjiv Kumar"
+date: "11/7/2021"
+output:
+  pdf_document: default
+  word_document: 
+    fig_height: 7
+    fig_width: 7
+editor_options:
+  chunk_output_type: console
+---
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(pracma) # for mode
+library(gt) # for table 
+library(rstatix) # for get_summary_stats
+library(car) # for Anova
+library(multcomp) # for glth
+library(gplots) # for gplots
+library(phia) # for testInteractions
+library(effects)
+#if you have used other packeges you may need to include them here
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#include a chunk that opens your indata
+
+borrelia <- read.table("borrelia.txt",
+                       header=TRUE, stringsAsFactors=TRUE, sep="\t", 
+                       na.strings="NA", dec=",", strip.white=TRUE)
+# head(borrelia)
+```
+
+# Part 1. One-way ANOVA
+
+## Introduction
+
+<!-- This is where you write the background and the aim with the assigment. -->
+
+Lime disease in human is caused by the bacterial spirochete Borrelia (*Borrelia burgdorferi*) which is transmitted by the bite of hard tick from the genus *Ixodes*. The present dataset (Ref. 1) is collected wherein ticks were sampled from three different islands (Askö (ASK), Torö (TOR) and Öja(OJA)) in Sweden. Prevalence of the *Borrelia* infected ticks was quantified at each sampling site. 
+
+## Method
+
+<!-- Brief explanation of methods, and a description of the work-flow. -->
+Since, the prevalence of *Borrelia* infection is presented in the form of percentages (%), the first step is to transform the data using Arcsine transformation. Prevalence of *Borrelia* infection was examined at different island. One-way ANOVA (`lm`) models were generated to see the difference of various factors in the prevalence of infection. The data was normalized with `sqrt` transformation and results were interpreted. 
+
+```{r  echo=TRUE, message=FALSE, warning=FALSE}
+# Arcsine data transformation 
+borrelia$borrelia.prev.arc <- asin(sqrt(borrelia$Borrelia_prevalence/100))
+```
+
+## Result
+<!-- Include the important result from your analyses. Have a short informative running text explaining the results. Add scripts in R chunks. Additional chunks can be included with the "insert"" button  -->
+
+### Prevalence of *Borrelia* infection
+
+Following results shows the prevalence of *Borrelia* infection was examined at different island. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# By Island
+borrelia %>%
+  group_by(Island) %>%
+  get_summary_stats(borrelia.prev.arc, type = "mean_sd") %>% 
+  gt() %>% 
+    tab_header(title = "Prevalence of Borrelia infection in ticks at different Island",
+    subtitle = "Measured central tendencies")
+```
+
+The data was visualized using boxplot. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Plot of means 
+ggplot(borrelia, aes(x = Island , y = borrelia.prev.arc)) +
+   geom_boxplot() +
+   labs(title="Prevalence of Borrelia infection in ticks at different Islands",
+        x ="Islands", y = "Prevalence of Borrelia infection") +
+  theme(plot.title = element_text(hjust = 0.5),
+  plot.subtitle = element_text(hjust = 0.5))
+```
+
+### One-way ANOVA
+Though, from the `Q-Q plot`, the residuals appear to be on straight line, but `Residuals vs Fitted` graphs shows spread in the largest group more than three times the spread in the smallest group, the data needs to be transformed. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+lm_borrelia <- lm(borrelia.prev.arc ~ Island, borrelia) 
+summary(lm_borrelia)
+
+summary(lm(borrelia.prev.arc ~ Habitat, borrelia))
+
+par(mfrow = c(2, 2))
+plot(lm_borrelia)
+par(mfrow = c(1, 1))
+
+Anova(lm_borrelia)
+```
+
+Stats Report 
+
+* Test: One-way ANOVA
+* F-value: `r anova(lm_borrelia)$'F value'[1]`
+* df: `r anova(lm_borrelia)$Df[2]`
+* p-value: `r anova(lm_borrelia)$'Pr(>F)'[1]`
+
+#### Sqrt transformation 
+
+Because of prevalence of no infection (0, zero), the data was transformed using the `sqrt` transformation, which normalizes the `Residuals vs Fitted` graph. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+lm_borrelia_sqrt <- lm(sqrt(borrelia.prev.arc) ~ Island * Habitat, borrelia) 
+summary(lm_borrelia_sqrt)
+
+par(mfrow = c(2, 2))
+plot(lm_borrelia_sqrt)
+par(mfrow = c(1, 1))
+
+Anova(lm_borrelia_sqrt)
+```
+
+Stats Report 
+
+* Test: One-way ANOVA
+* F-value: `r anova(lm_borrelia_sqrt)$'F value'[1]`
+* df: `r anova(lm_borrelia_sqrt)$Df[2]`
+* p-value: `r anova(lm_borrelia_sqrt)$'Pr(>F)'[1]`
+
+#### Interpretation of results 
+
+Anova table shows that the there was a significant different in `Borrelia` infections at various Islands. Therefore, `lm` model was generated for the `Island` using `sqrt` transformation. Both `Q-Q plot` and `Residuals vs Fitted` looks good.  
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+lm_borrelia_island_sqrt <-lm(sqrt(borrelia.prev.arc) ~ Island, borrelia)
+summary(lm_borrelia_island_sqrt)
+
+par(mfrow = c(2, 2))
+plot(lm_borrelia_island_sqrt)
+par(mfrow = c(1, 1))
+```
+
+Stats Report 
+
+* Test: One-way ANOVA
+* F-value: `r anova(lm_borrelia_island_sqrt)$'F value'[1]`
+* df: `r anova(lm_borrelia_island_sqrt)$Df[2]`
+* p-value: `r anova(lm_borrelia_island_sqrt)$'Pr(>F)'[1]`
+
+Since we used One-way ANOVA, pairwise comparison was made using post hoc test, `glth` from `multicomp` package. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Anova(lm_borrelia_island_sqrt)
+anova(lm_borrelia, lm_borrelia_island_sqrt)
+
+summary(glht(lm_borrelia_island_sqrt, linfct = mcp(Island = "Tukey")))
+```
+
+The results shows that there is significant difference between prevalence of *Borrelia* infection between Askö (ASK) - Öja(OJA) and Torö (TOR) - Öja(OJA) but the difference was not significant between Askö (ASK) - Torö (TOR). The table above show the significant differences among Island groups. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+attach(borrelia)
+
+plotmeans(borrelia.prev.arc ~ Island, connect = list(1:5), ccol = "black", pch = 16,
+          cex.axis = 0.95, main="Plot of Means", 
+          ylab= "Prevalence of Borrelia  infection")
+
+detach(borrelia)
+
+```
+
+## Discussion
+
+<!-- Discuss your findings and make conclusions. Be sure to answer questions.  -->
+Analysis of the data shows that the prevalence of *Borrelia* infection in ticks is significantly influenced by the location (i.e. Island) but not significantly affected by the habitat. It was also concluded that the difference between OJA - ASK and TOR - OJA were significant with p-value < 0.001, as compare to the TOR - ASK, which was non-significant. 
+
+## References
+
+<!-- Include references if appropriate -->
+<!-- ex. homepages that you fetch data from, articles from scientific journals, etc.  -->
+
+1. borrelia.txt, data provided with the assignment. 
+
+# Part 2. Two-way ANOVA with interaction
+
+## Introduction 
+Additional parameters i.e. soil pH and temperature was also included in the dataset at each site. Here, we are analyzing how Temperature and location influences the prevalence of infections in ticks. Here we convert Temperature data into factors to check the influence of low, medium, high and very high temperature on prevalence of *Borrelia* infection in comparision to the location. 
+
+## Method
+
+<!-- Brief explanation of methods, and a description of the work-flow. -->
+Since, the prevalence of *Borrelia* infection is presented in the form of percentages (%), the first step is to transform the data using Arcsine transformation. Both pH and Temperature data is converted into three equal factors (i.e. Low, Medium and High). 
+
+```{r}
+# head(borrelia)
+# pH_fact = cut(borrelia$PH, 4, labels=c('pH_Low', 'pH_Medium', 'pH_High', 'ph_VHigh'))
+# borrelia$pH_fact = pH_fact
+
+# head(borrelia)
+temp_fact = cut(borrelia$Temp, 3, labels=c('temp_Low', 'temp_Medium', 'temp_High'))
+borrelia$temp_fact = temp_fact
+# head(borrelia)
+```
+
+Following results shows the influence of pH and temperature on the prevalence of *Borrelia* infection. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# By Island
+borrelia %>%
+  group_by(temp_fact, Island) %>%
+  get_summary_stats(borrelia.prev.arc, type = "mean_sd") %>% 
+  gt() %>% 
+    tab_header(title = "Prevalence of Borrelia (effect of Temperature and Island)",
+    subtitle = "Measured central tendencies")
+```
+
+The data was visualized using boxplot. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+## Plot of means 
+ggplot(borrelia, aes(x = temp_fact , y = borrelia.prev.arc, color = temp_fact)) +
+   geom_boxplot() +
+   labs(title="Prevalence of Borrelia (effect of Temperature and Island)",
+        x ="Islands", y = "Prevalence of Borrelia infection") +
+  theme(plot.title = element_text(hjust = 0.5),
+  plot.subtitle = element_text(hjust = 0.5))
+```
+
+### Two-way ANOVA
+
+Two-way ANOVA was performed for prevalence of *Borrelia* infection against temperature and location (i.e. Island). `lm` model was generated for the `temp_fact` and `Island`. Both `Q-Q plot` and `Residuals vs Fitted` looks good.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+lm_borrelia_temp_Island <- lm(borrelia.prev.arc ~ temp_fact * Island, borrelia)
+summary(lm_borrelia_temp_Island)
+
+par(mfrow = c(2, 2))
+plot(lm_borrelia_temp_Island)
+par(mfrow = c(1, 1))
+
+```
+
+Stats Report 
+
+* Test: Two-way ANOVA
+* F-value: `r anova(lm_borrelia_temp_Island)$'F value'[1]`
+* df: `r anova(lm_borrelia_temp_Island)$Df[2]`
+* p-value: `r anova(lm_borrelia_temp_Island)$'Pr(>F)'[1]`
+
+Pairwise comparison was made using post hoc test, `glth` from `multicomp` package. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Anova(lm_borrelia_temp_Island)
+anova(lm_borrelia, lm_borrelia_temp_Island)
+```
+
+### post-hoc
+
+```{r}
+summary(glht(lm_borrelia_temp_Island, linfct = mcp(Island = "Tukey")))
+```
+
+There difference was only found among various Islands, the effect of temperature was not significant. 
+
+### for Temperature
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# for Temperature
+testInteractions(lm_borrelia_temp_Island, pairwise="temp_fact", adjustment="holm")
+```
+
+### for Island
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+testInteractions(lm_borrelia_temp_Island, pairwise="Island", adjustment="holm")
+```
+
+### Effect plot
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+plot(effect(term = "temp_fact:Island", mod = lm_borrelia_temp_Island, se=TRUE, x.var= "Island"),
+     ylab="Prevalence of Borrelia infection", 
+     xlab= "Islands", 
+     main="Effect plot of prevalence, temperature and Islands", 
+     colors = c(3,4)) 
+```
+
+## Discussion
+
+<!-- Discuss your findings and make conclusions. Be sure to answer questions.  -->
+Analysis of the data shows that the prevalence of *Borrelia* infection in ticks is significantly influenced by the location (i.e. Island) but not significantly affected by the temperature. 
+
+## References
+
+<!-- Include references if appropriate -->
+<!-- ex. homepages that you fetch data from, articles from scientific journals, etc.  -->
+
+1. borrelia.txt, data provided with the assignment. 

@@ -1,0 +1,279 @@
+---
+title: "Assignment 3: Chi-square test "
+author: "Sanjiv Kumar"
+date: "11/28/2021"
+output:
+  pdf_document: default
+  word_document:
+    fig_height: 7
+    fig_width: 7
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+# library(pracma) # for mode
+library(gt) # for table 
+# library(rstatix) # for get_summary_stats
+# library(car) # for Anova
+# library(multcomp) # for glth
+# library(gplots) # for gplots
+# library(phia) # for testInteractions
+# library(effects)
+library(knitr) # for table
+library(flextable) # tables
+#if you have used other packeges you may need to include them here
+
+# Nice Resource
+# https://statsandr.com/blog/chi-square-test-of-independence-in-r/
+```
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#include a chunk that opens your indata
+
+personality_animal <- read.table("Personality_animal.txt", header=TRUE, stringsAsFactors=TRUE, sep="\t", na.strings="NA", dec=",", strip.white=TRUE)
+
+personality_animal = as_tibble(personality_animal[, 2:3])
+
+```
+
+## Part 1. Personality and animals
+
+
+### Introduction
+
+
+The data was collected for a group of students depending on their choice of preferred animal based on personality. Here, we intend to study if there's is significant association between their choices. Data was provided [1].
+
+### Method
+
+The data was imported using `read.table` and converted to tibble using `as_tibble`. The contingency table was prepared using `addmargins(table(personality_animal))`. Chi-square test was performed to identify any significant association between the personality type using `chisq.test(personality_animal_table, correct = TRUE)`. 
+
+### Result
+
+#### Examining Data 
+Following is the distribution of the animal preference as per the personality type (Table 1). 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE}
+as_tibble(table(personality_animal)) %>% 
+  gt() %>% 
+    tab_header(title = "Table 1: Personality and animals ",
+    subtitle = "Animal preference as per the personality type")
+```
+
+#### Contingency Table 
+From the data provided (Ref 1) a contingency table was prepared with the sums at the margins (Table 2). 
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE}
+addmargins(table(personality_animal)) %>% 
+  kable(caption = "Table 2: Contingency Table")
+```
+
+#### $\chi ^{2}$ Chi-square test 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE}
+personality_animal_table = table(personality_animal)
+personality_animal_table_xi = chisq.test(personality_animal_table, correct = TRUE)
+personality_animal_table_xi
+# as_flextable(personality_animal_table_xi)
+```
+
+* Type of test: The $\chi ^{2}$ test for associations
+* Chi-square value: `r personality_animal_table_xi$statistic`
+* df: `r personality_animal_table_xi$parameter`
+* p-value: `r personality_animal_table_xi$p.value`
+
+\ 
+
+#### Fisher’s exact test
+
+
+Since the smallest count is less then 5, i.e. 2 (see Table 2), we want to use Fisher’s exact test. 
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE}
+personality_animal_table = table(personality_animal)
+personality_animal_table_fi = fisher.test(personality_animal_table)
+personality_animal_table_fi
+# as_flextable(personality_animal_table_fi)
+```
+
+* Type of test: `r personality_animal_table_fi$method`
+* p-value: `r personality_animal_table_fi$p.value`
+
+\ 
+
+#### Data visualization 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE, fig.align = 'center', out.width = "90%"}
+barplot(table(personality_animal), beside=T, xlab="Animal preference",
+        ylab="Frequencies", legend.text=T, args.legend = list(x=12, y=25),
+        ylim=c(0,1.2*max(table(personality_animal))), col=gray.colors(2),
+        las=1) #,
+        # main="Figure 1: Animal preference as per the personality type")
+mtext("Figure 1: Animal preference as per the personality type.", side=1, line=4, adj=-0.5, cex=0.9, col="grey20") 
+
+ggplot(personality_animal, aes(x=Animal, fill = Personality)) +
+  geom_bar(position = "dodge") +
+  labs(title="Figure 1: Animal preference as per the personality type", x="Animal preference", y="Frequencies") +
+  theme(panel.grid.major = element_line(size = 0.5, color = "grey"),
+        legend.position = c(0.92, 0.92),
+        # legend.title = element_text(colour="black", size=12, face="bold"),
+        legend.title = element_blank(),
+        legend.text = element_text(colour="black", size=12, face="bold"),
+        panel.grid.minor = element_line(size = 0.5, color = "grey"),
+        plot.title = element_text(hjust = 0.5),
+        axis.line = element_line(size = 0.7, color = "black"),
+        text = element_text(size = 24),
+        axis.text = element_text(angle=0, vjust=0.5, size=18, face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.background = element_rect(fill = "grey85",
+                                        size = 0.5, linetype = "solid"),
+        axis.ticks = element_line(size = 0.5, colour = "black"))
+
+```
+
+### Discussion
+
+Here association between personality type and animal preferences were examined. 
+
+Here hypotheses are:
+
+* H0: There is no association between personality type and animal preference. 
+* H1: There is significant association between personality type and animal preference.
+
+From the $\chi ^{2}$ test for associations, the p-value: `r personality_animal_table_xi$p.value` having df: `r personality_animal_table_xi$parameter` hence p<0.05, therefore, we reject the H0 (null hypothesis) and we conclude that there is significant association between personality type and animal preference. The results of `Fisher’s exact test` shows the p-value: `r personality_animal_table_fi$p.value` and therefore p<0.05, leading to similar conclusion i.e. rejecting H0 and thus, shows significant association between personality type and animal preference.
+
+### References
+
+1. Data provided with the assignment as file `Personality animal.txt`. 
+
+\newpage
+
+## Part 2. Chi-square analysis of a chosen subject
+
+```{r, message=FALSE, warning=FALSE, include=FALSE}
+#include a chunk that opens your in data
+
+eating_outside <- read.csv("data.txt", header=TRUE, stringsAsFactors=TRUE, na.strings="NA", dec=",", strip.white=TRUE)
+
+eating_outside = as_tibble(eating_outside[, c("Gender", "EatingOutside")])
+
+```
+
+### Introduction
+
+The current data is a subset of the dataset (Ref 1) collected for a food app with respect to the eating habits of the people in Stockholm, Sweden in 2020 (may be heavily influenced by ongoing COVID-19). Here only the columns Gender (Male and Female) and frequency of Eating Outside (Daily, Monthly, Weekly and Yearly) is considered for the analysis. With this data we are trying to answer if there's an effect of gender on frequency of eating outside. 
+
+* H0: There is no association between gender and frequency of eating outside. 
+* H1: There is significant association between gender and frequency of eating outside.
+
+### Method
+
+The data was imported using `read.csv`. The contingency table was prepared using `addmargins(table(eating_outside))`. Chi-square test was performed to identify any significant association between the personality type using `Fisher’s exact test` as there were values less then 5, however `chisq.test(eating_outside, correct = TRUE)` was also performed for curiosity. 
+
+### Result
+
+#### Examining Data 
+
+Following is the frequency distribution of eating outside based upon gender (Table 1). 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE}
+as_tibble(table(eating_outside)) %>% 
+  gt() %>% 
+    tab_header(title = "Table 1: Frequency of eating outside",
+    subtitle = "Influence of gender")
+
+eating_outside_table = table(eating_outside)
+# eating_outside_table
+```
+
+#### Contingency Table 
+
+From the data provided (Ref 1) a contingency table was prepared with the sums at the margins (Table 2). 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE}
+eating_outside_table_withMargin = addmargins(table(eating_outside)) %>% 
+  kable(caption = "Table 2: Contingency Table")
+eating_outside_table_withMargin
+```
+
+#### $\chi ^{2}$ Chi-square test 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE}
+# eating_outside_table = table(personality_animal)
+eating_outside_xi = chisq.test(eating_outside_table, correct = TRUE)
+eating_outside_xi
+# as_flextable(personality_animal_table_xi)
+```
+
+* Type of test: The $\chi ^{2}$ test for associations
+* Chi-square value: `r eating_outside_xi$statistic`
+* df: `r eating_outside_xi$parameter`
+* p-value: `r eating_outside_xi$p.value`
+
+\ 
+
+#### Fisher’s exact test
+
+
+Since the smallest count is less then 5, i.e. (0, 4, 3, 2, see Table 2), we need to use Fisher’s exact test. In this case $\chi ^{2}$ Chi-square test may yield incorrect values. 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE}
+# eating_outside_table = table(eating_outside_table)
+eating_outside_table_fi = fisher.test(eating_outside_table)
+eating_outside_table_fi
+# as_flextable(personality_animal_table_fi)
+```
+
+* Type of test: `r eating_outside_table_fi$method`
+* p-value: `r eating_outside_table_fi$p.value`
+
+\ 
+
+#### Data visualization 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=TRUE, fig.align = 'center', out.width = "90%"}
+barplot(eating_outside_table, beside=T, xlab="Eating outside",
+        ylab="Frequencies", legend.text=T, args.legend = list(x=12, y=25),
+        ylim=c(0,1.3*max(table(personality_animal))), col=gray.colors(2),
+        las=1) #,
+        # main="Figure 1: Animal preference as per the personality type")
+mtext("Figure 1: Influence of gender on frequency of eating outside", side=1, line=4, adj=0, cex=0.9, col="grey20") 
+
+# ggplot(as.data.frame(eating_outside_table), aes(x= EatingOutside, fill = Gender)) +
+#   geom_bar(position = "dodge") +
+#   labs(title="Figure 1: Animal preference as per the personality type", x="Animal preference", y="Frequencies") +
+#   theme(panel.grid.major = element_line(size = 0.5, color = "grey"),
+#         legend.position = c(0.92, 0.92),
+#         # legend.title = element_text(colour="black", size=12, face="bold"),
+#         legend.title = element_blank(),
+#         legend.text = element_text(colour="black", size=12, face="bold"),
+#         panel.grid.minor = element_line(size = 0.5, color = "grey"),
+#         plot.title = element_text(hjust = 0.5),
+#         axis.line = element_line(size = 0.7, color = "black"),
+#         text = element_text(size = 24),
+#         axis.text = element_text(angle=0, vjust=0.5, size=18, face = "bold"),
+#         axis.text.x = element_text(angle = 45, hjust = 1),
+#         panel.background = element_rect(fill = "grey85",
+#                                         size = 0.5, linetype = "solid"),
+#         axis.ticks = element_line(size = 0.5, colour = "black"))
+
+```
+
+### Discussion
+
+Using a subset of the data collected to study the if there is association of gender with the frequency of eating outside, we formulated following hypothesis. 
+
+* H0: There is no association between gender and frequency of eating outside. 
+* H1: There is significant association between gender and frequency of eating outside.
+
+Since there were values (frequencies) less then 5 in the contingency table, we conducted Fisher’s exact test which shows that the p-value: `r eating_outside_table_fi$p.value` i.e. p>0.05 and therefore, we accept the H0 i.e. there is no association between gender and frequency of eating outside from this data. 
+
+Just for the sake of curiosity we also performed $\chi ^{2}$ test for associations, which resulted in a warning "Chi-squared approximation may be incorrect", and the p-value: `r eating_outside_xi$p.value`, which is also p>0.05 and thus leading to similar conclusion i.e. accepting H0 and thus, show that there is no association between the gender and frequency of eating outisde based on this dataset. 
+
+### References
+
+1. Data is collected for a private food app based company, I can upload the data after removing crucial/specific details if required, please let me know. 
