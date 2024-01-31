@@ -1,4 +1,5 @@
 # Statistical analyses and visualization in R
+## Project Work
 
 ## Introduction
 The data was analyzed by creating combined data from Gapminder (Ref. 1). The data was downloaded in the form of CSV files for the population, Human Development Index (HDI), Income per person (Income), Life Expectancy (LifeExp), The Sustainable Development Index (SDI), Region and Income Group of various countries. These parameters are defined as follows:
